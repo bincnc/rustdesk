@@ -101,7 +101,8 @@ const CHARS: &[char] = &[
 ];
 
 pub const RENDEZVOUS_SERVERS: &[&str] = &["link.piok.cc"];
-pub const PUBLIC_RS_PUB_KEY: &str = "HGndU9kIb90FGiQZljMSvCGaqEt2XWAWGcX7xTC8poI=";
+// CUSTOM BUILD: empty key -> non-secure handshake (server runs without -k)
+pub const PUBLIC_RS_PUB_KEY: &str = "";
 
 pub const RS_PUB_KEY: &str = match option_env!("RS_PUB_KEY") {
     Some(key) if !key.is_empty() => key,
