@@ -139,17 +139,36 @@ jobs:
           fi
         shell: bash
 
-      - name: Patch Flutter plugin for MSVC (chrono header)
+      - name: Patch build.py for MSVC chrono header
         shell: bash
         run: |
-          echo "Patching flutter_gpu_texture_renderer d3d11_output.cpp for MSVC"
-          for base in "$HOME/.pub-cache" "$HOME/AppData/Local/Pub/Cache"; do
-            [ -d "$base" ] || continue
-            find "$base" -path '*flutter_gpu_texture_renderer*/windows/d3d11_output.cpp' -print 2>/dev/null | while IFS= read -r f; do
-              echo "  -> $f"
-              grep -q '#include <chrono>' "$f" || sed -i '1i #include <chrono>' "$f"
-            done
-          done
+          python3 - <<'PY'
+          p = "build.py"
+          s = open(p, encoding="utf-8").read()
+          needle = "    system2('flutter build windows --release')"
+          patch = """    # PATCH: flutter_gpu_texture_renderer missing <chrono> on MSVC
+    import glob as _glob, os as _os
+    _targets = _glob.glob('windows/flutter/ephemeral/.plugin_symlinks/flutter_gpu_texture_renderer/windows/d3d11_output.cpp')
+    if not _targets:
+        for _root, _dirs, _files in _os.walk('.'):
+            for _n in _files:
+                if _n == 'd3d11_output.cpp' and 'flutter_gpu_texture_renderer' in _root:
+                    _targets.append(_os.path.join(_root, _n))
+    for _f in _targets:
+        _t = open(_f, encoding='utf-8', errors='ignore').read()
+        if '#include <chrono>' not in _t:
+            open(_f, 'w', encoding='utf-8').write('#include <chrono>\\n' + _t)
+            print('PATCHED', _f)
+"""
+          if "PATCH: flutter_gpu_texture_renderer" not in s:
+              if needle not in s:
+                  raise SystemExit("needle not found in build.py")
+              s = s.replace(needle, patch + needle, 1)
+              open(p, "w", encoding="utf-8").write(s)
+              print("build.py patched OK")
+          else:
+              print("build.py already patched")
+          PY
 
       - name: Build rustdesk
         run: |
