@@ -427,6 +427,19 @@ def build_flutter_windows(version, features, skip_portable_pack):
             print("cargo build failed, please check rust source code.")
             exit(-1)
     os.chdir('flutter')
+    # PATCH: flutter_gpu_texture_renderer missing <chrono> on MSVC
+    import glob as _glob, os as _os
+    _targets = _glob.glob('windows/flutter/ephemeral/.plugin_symlinks/flutter_gpu_texture_renderer/windows/d3d11_output.cpp')
+    if not _targets:
+        for _root, _dirs, _files in _os.walk('.'):
+            for _n in _files:
+                if _n == 'd3d11_output.cpp' and 'flutter_gpu_texture_renderer' in _root:
+                    _targets.append(_os.path.join(_root, _n))
+    for _f in _targets:
+        _t = open(_f, encoding='utf-8', errors='ignore').read()
+        if '#include <chrono>' not in _t:
+            open(_f, 'w', encoding='utf-8').write('#include <chrono>\n' + _t)
+            print('PATCHED', _f)
     system2('flutter build windows --release')
     os.chdir('..')
     shutil.copy2('target/release/deps/dylib_virtual_display.dll',
